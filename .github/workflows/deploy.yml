@@ -27,6 +27,14 @@ on:
         description: 'Webhook Secret'
         required: false
         type: string
+      original_webhook_url:
+        description: 'Original webhook URL to forward final results'
+        required: false
+        type: string
+      original_webhook_secret:
+        description: 'Original webhook secret'
+        required: false
+        type: string
 
 jobs:
   deploy:
@@ -246,7 +254,7 @@ jobs:
             fi
             
             if [ $test_attempt -lt $test_max_attempts ]; then
-              echo "⏳ Waiting 45 seconds before retry..."
+              echo "⏳ Waiting 10 seconds before retry..."
               sleep 10
             else
               echo "💥 Test function deployment failed after all attempts"
@@ -280,7 +288,9 @@ jobs:
             "googleAccount": "${{ github.event.inputs.google_account }}",
             "completedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           },
-          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+          "originalWebhookUrl": "${{ github.event.inputs.original_webhook_url }}",
+          "originalWebhookSecret": "${{ github.event.inputs.original_webhook_secret }}"
         }
         EOF
         )
@@ -315,7 +325,9 @@ jobs:
             "failedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
             "workflowUrl": "https://github.com/dineplatform/cloud-functions-init/actions/runs/${{ github.run_id }}"
           },
-          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+          "originalWebhookUrl": "${{ github.event.inputs.original_webhook_url }}",
+          "originalWebhookSecret": "${{ github.event.inputs.original_webhook_secret }}"
         }
         EOF
         )
