@@ -20,11 +20,11 @@ on:
         required: true
         type: string
       webhook_url:
-        description: 'Webhook URL for status updates (ignored for now)'
+        description: 'Webhook URL for status updates'
         required: false
         type: string
       webhook_secret:
-        description: 'Webhook Secret (ignored for now)'
+        description: 'Webhook Secret'
         required: false
         type: string
 
@@ -262,3 +262,71 @@ jobs:
         echo "🎉 Test function deployment successful! Project is warmed up."
         echo "⏳ Waiting 30 seconds for project to stabilize..."
         sleep 30
+
+    - name: Send success webhook notification
+      if: success() && github.event.inputs.webhook_url != ''
+      run: |
+        echo "📡 Sending success webhook notification..."
+        
+        WEBHOOK_PAYLOAD=$(cat <<EOF
+        {
+          "webhookSecret": "${{ github.event.inputs.webhook_secret }}",
+          "response": {
+            "status": "success",
+            "message": "Cloud Functions initialization completed successfully.",
+            "projectId": "${{ github.event.inputs.project_id }}",
+            "deploymentId": "${{ github.event.inputs.deployment_id }}",
+            "repository": "dineplatform/cloud-functions-init",
+            "googleAccount": "${{ github.event.inputs.google_account }}",
+            "completedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          },
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        }
+        EOF
+        )
+        
+        echo "Webhook payload:"
+        echo "$WEBHOOK_PAYLOAD"
+        
+        curl -X POST "${{ github.event.inputs.webhook_url }}" \
+          -H "Content-Type: application/json" \
+          -H "User-Agent: GitHub-Actions-CF-Init/1.0" \
+          -d "$WEBHOOK_PAYLOAD" \
+          --max-time 30 \
+          --retry 3 \
+          --retry-delay 5 || echo "⚠️ Webhook delivery failed, but deployment was successful"
+
+    - name: Send failure webhook notification
+      if: failure() && github.event.inputs.webhook_url != ''
+      run: |
+        echo "📡 Sending failure webhook notification..."
+        
+        WEBHOOK_PAYLOAD=$(cat <<EOF
+        {
+          "webhookSecret": "${{ github.event.inputs.webhook_secret }}",
+          "response": {
+            "status": "error",
+            "error": "Cloud Functions initialization failed",
+            "message": "The deployment workflow failed. Check the GitHub Actions logs for details.",
+            "projectId": "${{ github.event.inputs.project_id }}",
+            "deploymentId": "${{ github.event.inputs.deployment_id }}",
+            "repository": "dineplatform/cloud-functions-init",
+            "googleAccount": "${{ github.event.inputs.google_account }}",
+            "failedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "workflowUrl": "https://github.com/dineplatform/cloud-functions-init/actions/runs/${{ github.run_id }}"
+          },
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        }
+        EOF
+        )
+        
+        echo "Webhook payload:"
+        echo "$WEBHOOK_PAYLOAD"
+        
+        curl -X POST "${{ github.event.inputs.webhook_url }}" \
+          -H "Content-Type: application/json" \
+          -H "User-Agent: GitHub-Actions-CF-Init/1.0" \
+          -d "$WEBHOOK_PAYLOAD" \
+          --max-time 30 \
+          --retry 3 \
+          --retry-delay 5 || echo "⚠️ Webhook delivery failed"
