@@ -177,8 +177,8 @@ jobs:
           --role="roles/pubsub.serviceAgent" || echo "Pub/Sub SA role assignment failed"
         
         echo "✅ All permission assignments completed"
-        echo "⏳ Waiting 90 seconds for permissions to propagate..."
-        sleep 90
+        echo "⏳ Waiting 30 seconds for permissions to propagate..."
+        sleep 30
     
     - name: Clean up any existing failed functions
       run: |
@@ -238,7 +238,7 @@ jobs:
               echo "🔍 Detected Compute Engine API issue - this should be resolved now"
             elif echo "$test_output" | grep -i "permission.*denied\|access.*denied\|forbidden"; then
               echo "🔍 Detected permission issue - waiting longer for propagation"
-              sleep 60
+              sleep 30
             elif echo "$test_output" | grep -i "precondition.*failed\|cannot.*update.*function.*without.*storage"; then
               echo "🔍 Detected storage/precondition issue - cleaning up and retrying"
               gcloud functions delete testFunction2 --region=europe-west2 --project=${{ github.event.inputs.project_id }} --quiet || echo "Function deletion failed"
@@ -247,7 +247,7 @@ jobs:
             
             if [ $test_attempt -lt $test_max_attempts ]; then
               echo "⏳ Waiting 45 seconds before retry..."
-              sleep 45
+              sleep 10
             else
               echo "💥 Test function deployment failed after all attempts"
               echo "Deployment output:"
@@ -260,8 +260,8 @@ jobs:
         done
         
         echo "🎉 Test function deployment successful! Project is warmed up."
-        echo "⏳ Waiting 30 seconds for project to stabilize..."
-        sleep 30
+        echo "⏳ Waiting 5 seconds for project to stabilize..."
+        sleep 5
 
     - name: Send success webhook notification
       if: success() && github.event.inputs.webhook_url != ''
