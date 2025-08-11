@@ -7,11 +7,10 @@ on:
         description: 'Firebase Project ID'
         required: true
         type: string
-      service_account_secret_name:
-        description: 'Name of the GitHub secret containing the service account JSON'
+      google_account:
+        description: 'Google account email (e.g., saqib@dineplatform.com)'
         required: true
         type: string
-        default: 'FIREBASE_SERVICE_ACCOUNT_KEY'
       env_variables:
         description: 'Environment variables (JSON format)'
         required: true
@@ -42,10 +41,18 @@ jobs:
       with:
         node-version: '20'
     
+    - name: Generate secret name from Google account
+      run: |
+        # Convert email to secret name format
+        GOOGLE_ACCOUNT="${{ github.event.inputs.google_account }}"
+        SECRET_NAME="key_$(echo "$GOOGLE_ACCOUNT" | sed 's/[^a-zA-Z0-9]/_/g')"
+        echo "SECRET_NAME=$SECRET_NAME" >> $GITHUB_ENV
+        echo "Generated secret name: $SECRET_NAME"
+    
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v2
       with:
-        credentials_json: ${{ secrets[github.event.inputs.service_account_secret_name] }}
+        credentials_json: ${{ secrets[env.SECRET_NAME] }}
         project_id: ${{ github.event.inputs.project_id }}
     
     - name: Set up gcloud CLI
@@ -189,12 +196,12 @@ jobs:
     
     - name: Deploy test function first (for new projects)
       run: |
-        cd cf
+        cd test-cf
         
         echo "🧪 Preparing simple test function deployment (no env variables)..."
         
         # Verify files exist
-        echo "📁 Files in cf directory:"
+        echo "📁 Files in test-cf directory:"
         ls -la
         
         # Install test function dependencies
