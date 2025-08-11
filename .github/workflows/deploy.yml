@@ -196,12 +196,12 @@ jobs:
     
     - name: Deploy test function first (for new projects)
       run: |
-        cd test-cf
+        cd cf
         
         echo "🧪 Preparing simple test function deployment (no env variables)..."
         
         # Verify files exist
-        echo "📁 Files in test-cf directory:"
+        echo "📁 Files in cf directory:"
         ls -la
         
         # Install test function dependencies
