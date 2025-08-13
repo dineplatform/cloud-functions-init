@@ -1,4 +1,5 @@
 const { onRequest } = require('firebase-functions/v2/https');
+const { onCustomEventPublished } = require("firebase-functions/v2/eventarc");
 
 exports.testFunction2 = onRequest({
   region: 'europe-west2',
@@ -12,4 +13,8 @@ exports.testFunction2 = onRequest({
     runtime: 'nodejs20',
     region: 'europe-west2'
   });
+});
+
+exports.eventarcInit = onCustomEventPublished("warmup.event", (event) => {
+  console.log("Eventarc warm-up event received:", event);
 });

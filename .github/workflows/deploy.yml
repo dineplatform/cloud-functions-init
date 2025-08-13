@@ -76,20 +76,19 @@ jobs:
         echo "Project number: $PROJECT_NUMBER"
         
         # Enable ALL required APIs first (including Compute Engine which was missing)
-        echo "🔧 Enabling required APIs..."
-        gcloud services enable cloudbuild.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Build API already enabled"
-        gcloud services enable cloudfunctions.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Functions API already enabled"
-        gcloud services enable artifactregistry.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Artifact Registry API already enabled"
-        gcloud services enable storage.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Storage API already enabled"
-        gcloud services enable eventarc.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Eventarc API already enabled"
-        gcloud services enable pubsub.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Pub/Sub API already enabled"
-        gcloud services enable run.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Run API already enabled"
-        gcloud services enable compute.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Compute Engine API already enabled"
-        gcloud services enable logging.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Logging API already enabled"
-        gcloud services enable monitoring.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Monitoring API already enabled"
-        
-        echo "⏳ Waiting 3 seconds for APIs to be fully enabled..."
-        sleep 3
+        # echo "🔧 Enabling required APIs..."
+        # gcloud services enable cloudbuild.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Build API already enabled"
+        # gcloud services enable cloudfunctions.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Functions API already enabled"
+        # gcloud services enable artifactregistry.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Artifact Registry API already enabled"
+        # gcloud services enable storage.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Storage API already enabled"
+        # gcloud services enable eventarc.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Eventarc API already enabled"
+        # gcloud services enable pubsub.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Pub/Sub API already enabled"
+        # gcloud services enable run.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Run API already enabled"
+        # gcloud services enable compute.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Compute Engine API already enabled"
+        # gcloud services enable logging.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Logging API already enabled"
+        # gcloud services enable monitoring.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Monitoring API already enabled"
+        # echo "⏳ Waiting 3 seconds for APIs to be fully enabled..."
+        # sleep 3
         
         # Define the service accounts
         CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
@@ -292,6 +291,23 @@ jobs:
           --max-time 30 \
           --retry 3 \
           --retry-delay 5 || echo "⚠️ Webhook delivery failed, but deployment was successful"
+
+    - name: Deploy eventarcInit function
+      if: success()
+      run: |
+        echo "🚀 Deploying the final eventarcInit function..."
+        cd cf
+        set +e
+        firebase deploy --only functions:eventarcInit --project ${{ github.event.inputs.project_id }} --non-interactive --force
+        exit_code=$?
+        set -e
+        if [ $exit_code -ne 0 ]; then
+          echo "⚠️ First deployment attempt of eventarcInit failed. Retrying in 15 seconds..."
+          sleep 15
+          firebase deploy --only functions:eventarcInit --project ${{ github.event.inputs.project_id }} --non-interactive --force
+        else
+          echo "✅ eventarcInit function deployed successfully on the first attempt."
+        fi
 
     - name: Send failure webhook notification
       if: failure() && github.event.inputs.webhook_url != ''
