@@ -88,8 +88,8 @@ jobs:
         gcloud services enable logging.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Logging API already enabled"
         gcloud services enable monitoring.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Monitoring API already enabled"
         
-        echo "⏳ Waiting 60 seconds for APIs to be fully enabled..."
-        sleep 60
+        echo "⏳ Waiting 3 seconds for APIs to be fully enabled..."
+        sleep 3
         
         # Define the service accounts
         CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
@@ -185,8 +185,8 @@ jobs:
           --role="roles/pubsub.serviceAgent" || echo "Pub/Sub SA role assignment failed"
         
         echo "✅ All permission assignments completed"
-        echo "⏳ Waiting 30 seconds for permissions to propagate..."
-        sleep 30
+        echo "⏳ Waiting 3 seconds for permissions to propagate..."
+        sleep 3
     
     - name: Clean up any existing failed functions
       run: |
@@ -199,8 +199,8 @@ jobs:
         echo "🧹 Attempting to clean up any existing testFunction2..."
         gcloud functions delete testFunction2 --region=europe-west2 --project=${{ github.event.inputs.project_id }} --quiet || echo "No testFunction2 to delete or deletion failed"
         
-        echo "⏳ Waiting 30 seconds after cleanup..."
-        sleep 30
+        echo "⏳ Waiting 1 seconds after cleanup..."
+        sleep 1
     
     - name: Deploy test function first (for new projects)
       run: |
@@ -254,8 +254,8 @@ jobs:
             fi
             
             if [ $test_attempt -lt $test_max_attempts ]; then
-              echo "⏳ Waiting 10 seconds before retry..."
-              sleep 10
+              echo "⏳ Waiting 1 second before retry..."
+              sleep 1
             else
               echo "💥 Test function deployment failed after all attempts"
               echo "Deployment output:"
@@ -268,8 +268,7 @@ jobs:
         done
         
         echo "🎉 Test function deployment successful! Project is warmed up."
-        echo "⏳ Waiting 5 seconds for project to stabilize..."
-        sleep 5
+
 
     - name: Send success webhook notification
       if: success() && github.event.inputs.webhook_url != ''
