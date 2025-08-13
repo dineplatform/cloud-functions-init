@@ -68,7 +68,126 @@ jobs:
     
     - name: Install Firebase CLI
       run: npm install -g firebase-tools
-
+    
+    - name: Enable required APIs and setup permissions
+      run: |
+        echo "🔧 Enabling all required APIs..."
+        PROJECT_NUMBER=$(gcloud projects describe ${{ github.event.inputs.project_id }} --format="value(projectNumber)")
+        echo "Project number: $PROJECT_NUMBER"
+        
+        # Enable ALL required APIs first (including Compute Engine which was missing)
+        echo "🔧 Enabling required APIs..."
+        gcloud services enable cloudbuild.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Build API already enabled"
+        gcloud services enable cloudfunctions.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Functions API already enabled"
+        gcloud services enable artifactregistry.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Artifact Registry API already enabled"
+        gcloud services enable storage.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Storage API already enabled"
+        gcloud services enable eventarc.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Eventarc API already enabled"
+        gcloud services enable pubsub.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Pub/Sub API already enabled"
+        gcloud services enable run.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Cloud Run API already enabled"
+        gcloud services enable compute.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Compute Engine API already enabled"
+        gcloud services enable logging.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Logging API already enabled"
+        gcloud services enable monitoring.googleapis.com --project=${{ github.event.inputs.project_id }} || echo "Monitoring API already enabled"
+        
+        echo "⏳ Waiting 60 seconds for APIs to be fully enabled..."
+        sleep 60
+        
+        # Define the service accounts
+        CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+        COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+        FUNCTIONS_SA="service-${PROJECT_NUMBER}@gcf-admin-robot.iam.gserviceaccount.com"
+        
+        echo "Cloud Build service account: $CLOUDBUILD_SA"
+        echo "Compute Engine service account: $COMPUTE_SA"
+        echo "Cloud Functions service account: $FUNCTIONS_SA"
+        
+        echo "🔧 Setting up comprehensive permissions..."
+        
+        # Grant extensive roles to Cloud Build service account
+        echo "🔧 Granting roles to Cloud Build service account..."
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/cloudfunctions.admin" || echo "Cloud Functions Admin role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/iam.serviceAccountUser" || echo "IAM Service Account User role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/artifactregistry.writer" || echo "Artifact Registry Writer role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/storage.admin" || echo "Storage Admin role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/eventarc.admin" || echo "Eventarc Admin role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/run.admin" || echo "Cloud Run Admin role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/compute.networkUser" || echo "Compute Network User role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${CLOUDBUILD_SA}" \
+          --role="roles/logging.logWriter" || echo "Logging Writer role assignment failed"
+        
+        # Grant comprehensive roles to Compute Engine service account
+        echo "🔧 Granting roles to Compute Engine service account..."
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${COMPUTE_SA}" \
+          --role="roles/storage.objectViewer" || echo "Storage Object Viewer role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${COMPUTE_SA}" \
+          --role="roles/storage.admin" || echo "Storage Admin role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${COMPUTE_SA}" \
+          --role="roles/cloudfunctions.serviceAgent" || echo "Cloud Functions Service Agent role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${COMPUTE_SA}" \
+          --role="roles/run.serviceAgent" || echo "Cloud Run Service Agent role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${COMPUTE_SA}" \
+          --role="roles/artifactregistry.reader" || echo "Artifact Registry Reader role assignment failed"
+        
+        # Grant roles to Cloud Functions service account
+        echo "🔧 Granting roles to Cloud Functions service account..."
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${FUNCTIONS_SA}" \
+          --role="roles/storage.objectViewer" || echo "Functions SA Storage Object Viewer role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${FUNCTIONS_SA}" \
+          --role="roles/storage.admin" || echo "Functions SA Storage Admin role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${FUNCTIONS_SA}" \
+          --role="roles/artifactregistry.reader" || echo "Functions SA Artifact Registry Reader role assignment failed"
+        
+        # Additional service accounts that might be needed
+        EVENTARC_SA="service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com"
+        PUBSUB_SA="service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${EVENTARC_SA}" \
+          --role="roles/eventarc.serviceAgent" || echo "Eventarc SA role assignment failed"
+        
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${PUBSUB_SA}" \
+          --role="roles/pubsub.serviceAgent" || echo "Pub/Sub SA role assignment failed"
+        
+        echo "✅ All permission assignments completed"
+        echo "⏳ Waiting 30 seconds for permissions to propagate..."
+        sleep 30
+    
     - name: Clean up any existing failed functions
       run: |
         echo "🧹 Checking for and cleaning up any failed function deployments..."
@@ -80,8 +199,8 @@ jobs:
         echo "🧹 Attempting to clean up any existing testFunction2..."
         gcloud functions delete testFunction2 --region=europe-west2 --project=${{ github.event.inputs.project_id }} --quiet || echo "No testFunction2 to delete or deletion failed"
         
-        echo "⏳ Waiting 3 seconds after cleanup..."
-        sleep 3
+        echo "⏳ Waiting 30 seconds after cleanup..."
+        sleep 30
     
     - name: Deploy test function first (for new projects)
       run: |
@@ -135,8 +254,8 @@ jobs:
             fi
             
             if [ $test_attempt -lt $test_max_attempts ]; then
-              echo "⏳ Waiting 3 seconds before retry..."
-              sleep 3
+              echo "⏳ Waiting 10 seconds before retry..."
+              sleep 10
             else
               echo "💥 Test function deployment failed after all attempts"
               echo "Deployment output:"
@@ -149,8 +268,8 @@ jobs:
         done
         
         echo "🎉 Test function deployment successful! Project is warmed up."
-        echo "⏳ Waiting 2 seconds for project to stabilize..."
-        sleep 2
+        echo "⏳ Waiting 5 seconds for project to stabilize..."
+        sleep 5
 
     - name: Send success webhook notification
       if: success() && github.event.inputs.webhook_url != ''
