@@ -171,6 +171,16 @@ jobs:
           --member="serviceAccount:${FUNCTIONS_SA}" \
           --role="roles/artifactregistry.reader" || echo "Functions SA Artifact Registry Reader role assignment failed"
         
+        echo "🔧 Granting Datastore User role for Firestore access..."
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${COMPUTE_SA}" \
+          --role="roles/datastore.user" || echo "Datastore User role assignment failed"
+          
+        echo "🔧 Granting Firebase Admin SDK service agent access..."
+        gcloud projects add-iam-policy-binding ${{ github.event.inputs.project_id }} \
+          --member="serviceAccount:${COMPUTE_SA}" \
+          --role="roles/firebase.admin" || echo "Firebase Admin role assignment failed"
+
         echo "✅ All permission assignments completed"
         echo "⏳ Waiting 3 seconds for permissions to propagate..."
         sleep 3
